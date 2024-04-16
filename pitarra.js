@@ -21,13 +21,17 @@ let fichasJugador1 = 0; // Contador de fichas del jugador 1
 let fichasJugador2 = 0; // Contador de fichas del jugador 2
 const maxFichas = 12; // Número máximo de fichas por jugador
 let eliminarFicha = false; // Variable para controlar si se debe eliminar una ficha del oponente
+let lineasTres = new Set(); // Conjunto para almacenar las líneas de tres ya completadas
+const mostradorFichaRoja = document.getElementById("mostrador-ficha-roja");
+const mostradorFichaAmarilla = document.getElementById("mostrador-ficha-amarilla");
 
+//Busca la posicion en la matriz en la cual se encuentra el numero de casilla proporcionado
 function buscarPosicion(tablero, numero) {
     let posiciones = [];
     for (let i = 0; i < tablero.length; i++) {
         for (let j = 0; j < tablero[i].length; j++) {
             for (let k = 0; k < tablero[i][j].length; k++) {
-                if (tablero[i][j][k][1] === numero && tablero[i][j][k][0] === 0) {
+                if (tablero[i][j][k][1] === numero /*&& tablero[i][j][k][0] === 0*/) {
                     if ((turno === 1 && fichasJugador1 < maxFichas) || (turno === 2 && fichasJugador2 < maxFichas)) {
                         posiciones.push([i, j, k]);
                         if (numero % 2 === 0 && posiciones.length >= 2) {
@@ -42,117 +46,166 @@ function buscarPosicion(tablero, numero) {
     }
     return { encontrado: false };
 }
-
+//Cambia el estado de la posicion de la matriz de 0 a 1 o 2
+//(1 indicando que hay una pieza del jugador 1 y 2 indicando que hay una pieza del jugador 2)
 function cambiarPosicion(tablero, posiciones) {
+    let fichas1 = 0;
+    let fichas2 = 0;
     for (const [i, j, k] of posiciones) {
         tablero[i][j][k][0] = turno;
         if (turno === 1) {
-            fichasJugador1++;
+            fichas1++;
         } else {
-            fichasJugador2++;
+            fichas2++;
         }
     }
+    fichasJugador1+=(fichas1!==0);
+    fichasJugador2+=(fichas2!==0);
 }
-
+//Verifica cuando se ha formado una linea de 3
 function verificarLinea(tablero, jugador) {
     // Verificar filas
     for (let i = 0; i < tablero.length; i++) {
-        let contador = 0;
+        let linea = [];
         for (let j = 0; j < tablero[i].length; j++) {
+            let contador = 0;
             for (let k = 0; k < tablero[i][j].length; k++) {
                 if (tablero[i][j][k][0] === jugador) {
+                    linea.push(tablero[i][j][k]);
+                    contador++; //Aqui esta el error pipipi
+                }
+            }
+            if (contador === 3 && lineasTres.has(JSON.stringify(linea))==false) {
+                console.log(lineasTres.has(JSON.stringify(linea)))
+                lineasTres.add(JSON.stringify(linea))
+                console.log("fila hecha");
+                console.log(JSON.stringify(linea));
+                console.log(lineasTres)
+                return true;
+            }
+        }
+    }
+    //Verificar columnas de la segunda y cuarta matriz
+    for(let i = 1; i <= 3; i+=2){
+        let linea = [];
+        for(let j = 0; j < tablero[i].length; j++){
+            let contador = 0;
+            for(let k = 0; k < tablero[i][j].length; k++){
+                if (tablero[i][k][j][0] === jugador){
+                    linea.push(tablero[i][k][j]);
+                    console.log(JSON.stringify(tablero[i][k][j]))
                     contador++;
                 }
             }
-        }
-        if (contador === 3) {
-            return true;
+            if (contador === 3 && lineasTres.has(JSON.stringify(linea))==false) {
+                console.log(lineasTres.has(JSON.stringify(linea)))
+                lineasTres.add(JSON.stringify(linea))
+                console.log("Columna hecha");
+                console.log(JSON.stringify(linea));
+                console.log(lineasTres);
+                return true;
+            }
         }
     }
-
-    // Verificar columnas
-    for (let j = 0; j < tablero[0].length; j++) {
+    //Verificar columnas de la primera y tercera matriz
+    for(let i = 0; i <= 2; i += 2){
+        let linea = [];
         let contador = 0;
-        for (let i = 0; i < tablero.length; i++) {
-            for (let k = 0; k < tablero[i][j].length; k++) {
-                if (tablero[i][j][k][0] === jugador) {
-                    contador++;
-                }
+        for(let j = 0; j < tablero[i].length; j++){
+            if(tablero[i][j][1][0] === jugador){
+                linea.push(tablero[i][j][1]);
+                contador++;
             }
         }
-        if (contador === 3) {
+        if (contador === 3 && lineasTres.has(JSON.stringify(linea))==false) {
+            lineasTres.add(JSON.stringify(linea))
+            console.log("Columna hecha");
+            console.log(JSON.stringify(linea));
+            console.log(lineasTres);
             return true;
         }
     }
-
-    // Verificar diagonales
-    if (
-        (tablero[0][0][0][0] === jugador && tablero[1][1][1][0] === jugador && tablero[2][2][2][0] === jugador) ||
-        (tablero[0][2][0][0] === jugador && tablero[1][1][1][0] === jugador && tablero[2][0][2][0] === jugador)
-    ) {
-        return true;
-    }
-
     return false;
 }
 
-function eliminarFichaOponente(tablero, jugador, fila, columna) {
-    if (tablero[fila][columna][0][0] !== jugador) {
+// Función para eliminar una ficha del oponente
+function eliminarFichaOponente(tablero, jugador, matriz, fila, columna, id) {
+    if (tablero[matriz][fila][columna][0] !== jugador) {
         console.log(`¡Error! No puedes eliminar una ficha que no pertenece al jugador ${jugador}.`);
         return;
     }
-    tablero[fila][columna][0][0] = 0;
-    if (jugador === 1) {
-        fichasJugador1--;
-    } else {
-        fichasJugador2--;
-    }
-    console.log(`Se eliminó una ficha del jugador ${jugador === 1 ? 2 : 1}.`);
+    cambiarEstiloFicha(jugador, id, false);
+    tablero[matriz][fila][columna][0] = 0;
+    jugadorAEliminar = jugador === 1 ? 2 : 1;
     eliminarFicha = false; // Desactivar la opción de eliminar ficha del oponente
-    filaEliminar = -1; // Restablecer la fila de la ficha a eliminar
-    columnaEliminar = -1; // Restablecer la columna de la ficha a eliminar
 }
 
-function agregarEventosClick() {
+function cambiarEstiloFicha(turno, id, aparecer) {
+    const fichaRoja = document.querySelector(`.ficha-roja${id}`);
+    const fichaAmarilla = document.querySelector(`.ficha-amarilla${id}`);
+    if(turno === 1 && aparecer) {
+        fichaAmarilla.style.opacity = '1';
+    }else if(turno === 2 && aparecer) {
+        fichaRoja.style.opacity = '1';
+    }
+    else if(turno === 1 && !aparecer){
+        fichaAmarilla.style.opacity = '0';
+    }
+    else{
+        fichaRoja.style.opacity = '0';
+    }
+}
+
+// Función para agregar eventos de clic a los botones del tablero
+function agregarEventosClick() { 
     const botones = document.querySelectorAll('.ficha-button');
     botones.forEach(boton => {
         boton.addEventListener('click', () => {
+            console.log("---------------------------------------------------")
+            const id = parseInt(boton.id);
+            const resultado = buscarPosicion(tablero, id);
             if (eliminarFicha) {
-                const id = parseInt(boton.id);
-                const resultado = buscarPosicion(tablero, id);
-                if (resultado.encontrado && resultado.posiciones.length === 1) {
-                    const [fila, columna] = resultado.posiciones[0];
-                    console.log(tablero[fila][columna][0][0])
-                    if (tablero[fila][columna][0][0] !== 0 && tablero[fila][columna][0][0] !== turno) {
-                        console.log(`Se eligió eliminar una ficha del jugador ${tablero[fila][columna][0][0]}.`);
-                        eliminarFichaOponente(tablero, tablero[fila][columna][0][0], fila, columna);
-                        turno = turno === 1 ? 2 : 1;
+                console.log(resultado.posiciones)
+                if (resultado.encontrado) {
+                    const [matriz, fila, columna] = resultado.posiciones[0];
+                    console.log(tablero[matriz][fila][columna][0])
+                    if (tablero[matriz][fila][columna][0] !== 0 && tablero[matriz][fila][columna][0] == turno) {
+                        console.log(`Se elimino una ficha del jugador ${turno}.`);
+                        eliminarFichaOponente(tablero, tablero[matriz][fila][columna][0], matriz, fila, columna, id);
                         console.log(tablero);
                     } else {
                         console.log('¡Error! Selecciona una ficha del oponente para eliminar.');
                     }
                 }
             } else {
-                const id = parseInt(boton.id);
-                const resultado = buscarPosicion(tablero, id);
                 if (resultado.encontrado) {
                     console.log(resultado);
                     cambiarPosicion(tablero, resultado.posiciones);
-                    turno = turno === 1 ? 2 : 1;
-                    console.log('Turno actual:', turno);
+                    cambiarEstiloFicha(turno, id, true);
                     console.log('Fichas del jugador 1:', fichasJugador1);
                     console.log('Fichas del jugador 2:', fichasJugador2);
                     console.log(tablero);
                     if (verificarLinea(tablero, turno)) {
                         eliminarFicha = true;
+                        console.log("Elimina una ficha del rival")
+                        //lineasTres.add(turno); // Agregar la línea de tres al conjunto
                     }
+                    turno = turno === 1 ? 2 : 1;
+                    cambiarMostradorTurno(mostradorFichaRoja, mostradorFichaAmarilla, turno);
+                    
                 } else {
                     console.log(`La posición ${id} ya está ocupada o el jugador ha alcanzado el máximo de fichas.`);
                 }
+                console.log(lineasTres)
+            }
+            if(eliminarFicha){
+                console.log(`Eliminar ficha: ${eliminarFicha}`)
+            }
+            else{
+                console.error(`Eliminar ficha: ${eliminarFicha}`)
             }
         });
     });
 }
-
 
 agregarEventosClick();
