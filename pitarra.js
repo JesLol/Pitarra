@@ -52,57 +52,53 @@ function cambiarPosicion(tablero, posiciones) {
     let fichas1 = 0;
     let fichas2 = 0;
     for (const [i, j, k] of posiciones) {
-        tablero[i][j][k][0] = turno;
-        if (turno === 1) {
-            fichas1++;
-        } else {
-            fichas2++;
+        if(tablero[i][j][k][0] != 0){
+            return false; //La funcion retorna falso en caso de que la primera posicion del array no sea 0, 
+                          //lo que significa que es 1 o 2 y ya esta ocupada por algun jugador
+        }else{
+            tablero[i][j][k][0] = turno; //Si la primera posicion del array es 0; sigue con la funcion
         }
+        if (turno === 1) {fichas1++;
+        } else {fichas2++;}
     }
     fichasJugador1+=(fichas1!==0);
     fichasJugador2+=(fichas2!==0);
+    return true;
 }
 //Verifica cuando se ha formado una linea de 3
 function verificarLinea(tablero, jugador) {
     // Verificar filas
     for (let i = 0; i < tablero.length; i++) {
-        let linea = [];
         for (let j = 0; j < tablero[i].length; j++) {
+            let linea = [];
             let contador = 0;
             for (let k = 0; k < tablero[i][j].length; k++) {
                 if (tablero[i][j][k][0] === jugador) {
                     linea.push(tablero[i][j][k]);
-                    contador++; //Aqui esta el error pipipi
+                    contador++;
                 }
             }
+            //Si el contador es 3 y el array de las posiciones no se encuentra en el set agrega el array de la linea al set
             if (contador === 3 && lineasTres.has(JSON.stringify(linea))==false) {
-                console.log(lineasTres.has(JSON.stringify(linea)))
                 lineasTres.add(JSON.stringify(linea))
-                console.log("fila hecha");
-                console.log(JSON.stringify(linea));
-                console.log(lineasTres)
                 return true;
             }
         }
     }
     //Verificar columnas de la segunda y cuarta matriz
     for(let i = 1; i <= 3; i+=2){
-        let linea = [];
         for(let j = 0; j < tablero[i].length; j++){
+            let linea = [];
             let contador = 0;
             for(let k = 0; k < tablero[i][j].length; k++){
                 if (tablero[i][k][j][0] === jugador){
                     linea.push(tablero[i][k][j]);
-                    console.log(JSON.stringify(tablero[i][k][j]))
                     contador++;
                 }
             }
+            //Si el contador es 3 y el array de las posiciones no se encuentra en el set agrega el array de la linea al set
             if (contador === 3 && lineasTres.has(JSON.stringify(linea))==false) {
-                console.log(lineasTres.has(JSON.stringify(linea)))
                 lineasTres.add(JSON.stringify(linea))
-                console.log("Columna hecha");
-                console.log(JSON.stringify(linea));
-                console.log(lineasTres);
                 return true;
             }
         }
@@ -117,29 +113,49 @@ function verificarLinea(tablero, jugador) {
                 contador++;
             }
         }
+        //Si el contador es 3 y el array de las posiciones no se encuentra en el set agrega el array de la linea al set
         if (contador === 3 && lineasTres.has(JSON.stringify(linea))==false) {
             lineasTres.add(JSON.stringify(linea))
-            console.log("Columna hecha");
-            console.log(JSON.stringify(linea));
-            console.log(lineasTres);
             return true;
         }
+    } return false;
+}
+
+//Funcion para eliminar el array de la linea de 3 del set en caso de que se elimine una ficha que este en la linea de tres
+function eliminarArraySet(set, numeroABuscar) {
+    for (let array of set) {
+        const subarray = JSON.parse(array);
+        for(let i = 0; i < 3; i++){
+            if(subarray[i][1]==numeroABuscar){
+                return array;
+            }
+        }
     }
-    return false;
+    return false; // Si no encontramos devolvemos false
 }
 
 // Función para eliminar una ficha del oponente
-function eliminarFichaOponente(tablero, jugador, matriz, fila, columna, id) {
+function eliminarFichaOponente(tablero, jugador, id, posiciones) {
+    let [matriz, fila, columna] = posiciones[0];
     if (tablero[matriz][fila][columna][0] !== jugador) {
         console.log(`¡Error! No puedes eliminar una ficha que no pertenece al jugador ${jugador}.`);
         return;
     }
     cambiarEstiloFicha(jugador, id, false);
     tablero[matriz][fila][columna][0] = 0;
+    if(posiciones.length==2){
+        [matriz, fila, columna] = posiciones[1];
+        tablero[matriz][fila][columna][0] = 0;
+    }
+    if(eliminarArraySet(lineasTres, id)!=false){
+        lineasTres.delete(eliminarArraySet(lineasTres, id));
+    }
     jugadorAEliminar = jugador === 1 ? 2 : 1;
     eliminarFicha = false; // Desactivar la opción de eliminar ficha del oponente
+    return true;
 }
 
+//Funcion para mostrar o dejar de mostrar las imagenes de las fichas
 function cambiarEstiloFicha(turno, id, aparecer) {
     const fichaRoja = document.querySelector(`.ficha-roja${id}`);
     const fichaAmarilla = document.querySelector(`.ficha-amarilla${id}`);
@@ -165,44 +181,38 @@ function agregarEventosClick() {
             const id = parseInt(boton.id);
             const resultado = buscarPosicion(tablero, id);
             if (eliminarFicha) {
-                console.log(resultado.posiciones)
                 if (resultado.encontrado) {
                     const [matriz, fila, columna] = resultado.posiciones[0];
-                    console.log(tablero[matriz][fila][columna][0])
                     if (tablero[matriz][fila][columna][0] !== 0 && tablero[matriz][fila][columna][0] == turno) {
-                        console.log(`Se elimino una ficha del jugador ${turno}.`);
-                        eliminarFichaOponente(tablero, tablero[matriz][fila][columna][0], matriz, fila, columna, id);
-                        console.log(tablero);
+                        if(eliminarFichaOponente(tablero, tablero[matriz][fila][columna][0], id, resultado.posiciones)){
+                            console.log(`Ficha del rival eliminada: ${tablero[matriz][fila][columna][1]}`)
+                        }else{
+                            console.log("No se pudo eliminar la ficha del rival.");
+                        }
                     } else {
                         console.log('¡Error! Selecciona una ficha del oponente para eliminar.');
                     }
                 }
             } else {
                 if (resultado.encontrado) {
-                    console.log(resultado);
-                    cambiarPosicion(tablero, resultado.posiciones);
-                    cambiarEstiloFicha(turno, id, true);
-                    console.log('Fichas del jugador 1:', fichasJugador1);
-                    console.log('Fichas del jugador 2:', fichasJugador2);
-                    console.log(tablero);
-                    if (verificarLinea(tablero, turno)) {
-                        eliminarFicha = true;
-                        console.log("Elimina una ficha del rival")
-                        //lineasTres.add(turno); // Agregar la línea de tres al conjunto
+                    if(cambiarPosicion(tablero, resultado.posiciones)){
+                        cambiarEstiloFicha(turno, id, true);
+                        console.log('Fichas del jugador 1:', fichasJugador1);
+                        console.log('Fichas del jugador 2:', fichasJugador2);
+                        if (verificarLinea(tablero, turno)) {
+                            eliminarFicha = true;
+                            console.log("Elimina una ficha del rival")
+                            //lineasTres.add(turno); // Agregar la línea de tres al conjunto
+                        }
+                        turno = turno === 1 ? 2 : 1;
+                        cambiarMostradorTurno(mostradorFichaRoja, mostradorFichaAmarilla, turno);
+                    }else{
+                        console.log("No puedes poner la ficha en una posicion ya ocupada por el rival")
                     }
-                    turno = turno === 1 ? 2 : 1;
-                    cambiarMostradorTurno(mostradorFichaRoja, mostradorFichaAmarilla, turno);
                     
                 } else {
-                    console.log(`La posición ${id} ya está ocupada o el jugador ha alcanzado el máximo de fichas.`);
+                    console.log(`El jugador ha alcanzado el máximo de fichas.`);
                 }
-                console.log(lineasTres)
-            }
-            if(eliminarFicha){
-                console.log(`Eliminar ficha: ${eliminarFicha}`)
-            }
-            else{
-                console.error(`Eliminar ficha: ${eliminarFicha}`)
             }
         });
     });
